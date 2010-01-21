@@ -88,8 +88,7 @@ class SecrectsCsv extends Writer
         }
 
         // Open the file and do error checking in one step
-        if ( !is_writable( $filename ) 
-          || ( $this->target = fopen( $filename, "w+" ) ) === false ) 
+        if ( ( $this->target = fopen( $filename, "w+" ) ) === false ) 
         {
             throw new \Exception( "The file '$filename' can't be opened for writing." );
         }
@@ -98,7 +97,7 @@ class SecrectsCsv extends Writer
         // column names.
         fwrite( 
             $this->target,
-            (string)new SecrectsCsv\Entry( "Description", "Id", "PIN", "Email", "Notes" )
+            (string)new SecretsCsv\Entry( "Description", "Id", "PIN", "Email", "Notes" )
         );
 
         foreach( $this->passwordList->getEntries() as $entry ) 
@@ -118,14 +117,14 @@ class SecrectsCsv extends Writer
     {
         // Create a new entry object holding all the information while the 
         // visiting takes places
-        $this->currentEntry = new SecrectsCsv\Entry();
+        $this->currentEntry = new SecretsCsv\Entry();
 
         $this->visitType( $entry->getType() );
         $this->visitFolders( $entry->getFolders() );
         $this->visitName( $entry->getName() );
         $this->visitDescription( $entry->getDescription() );
         $this->visitPassword( $entry->getPassword() );
-        $this->visitLastUpdated( $entry->lastUpdated );
+        $this->visitLastUpdated( $entry->getLastUpdated() );
         $this->visitFields( $entry->getFields() );
 
         // Write out the current entry
