@@ -141,15 +141,15 @@ class RevelationXml extends Reader
             throw new \Exception( "Untyped entry detected in: /" . implode( "/", $this->folders ) );
         }
 
-        if ( !isset( $this->entryMapping[$type] ) ) 
+        if ( !isset( $this->entryMapping[(string)$type->nodeValue] ) ) 
         {
             // Use the default entry visitor function, as no mapping for the 
             // defined type is defined.
-            $this->visitEntryDefault( $type, $entry );
+            $this->visitEntryDefault( (string)$type->nodeValue, $entry );
         }
         else 
         {
-            $this->{$this->entryMapping[$type]}( $entry );
+            $this->{$this->entryMapping[(string)$type->nodeValue]}( $entry );
         }
     }
 
@@ -263,15 +263,15 @@ class RevelationXml extends Reader
                 . $this->currentEntry->getName() 
             );
         }
-        if ( !isset( $this->fieldsMapping[$id] ) ) 
+        if ( !isset( $this->fieldsMapping[(string)$id->nodeValue] ) ) 
         {
             // Use the default fields visitor function, as no id is set or no 
             // mapping for the found id is defined.
-            $this->visitFieldDefault( $id, $field );
+            $this->visitFieldDefault( (string)$id->nodeValue, $field );
         }
         else 
         {
-            $this->{$this->fieldMapping[$id]}( $field );
+            $this->{$this->fieldMapping[(string)$id->nodeValue]}( $field );
         }
     }
 
