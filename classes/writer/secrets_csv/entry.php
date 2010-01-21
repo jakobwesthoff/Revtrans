@@ -266,10 +266,21 @@ class Entry
      */
     protected function escapeColumn( $column ) 
     {
-        // The only escaping needed I am currently aware of is the 
-        // encapsulation in double quotes, as well as to escape every in string 
-        // double quote with two double quote characters following directly 
-        // each other.
-        return '"' . str_replace( '"', '""', $column ) . '"';
+        // If there is no column content it is not enclosed in quotes, because 
+        // the parser does not handle this properly
+        if ( strlen( $column ) === 0 ) 
+        {
+            return "";
+        }
+        else 
+        {
+            // The only escaping needed I am currently aware of is the 
+            // encapsulation in double quotes, as well as to escape every in string 
+            // double quote with two double quote characters following directly 
+            // each other.
+
+            return '"' . str_replace( '"', '""', $column ) . '"';
+        }
+
     }
 }
