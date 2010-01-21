@@ -263,7 +263,7 @@ class RevelationXml extends Reader
                 . $this->currentEntry->getName() 
             );
         }
-        if ( !isset( $this->fieldsMapping[(string)$id->nodeValue] ) ) 
+        if ( !isset( $this->fieldMapping[(string)$id->nodeValue] ) ) 
         {
             // Use the default fields visitor function, as no id is set or no 
             // mapping for the found id is defined.
