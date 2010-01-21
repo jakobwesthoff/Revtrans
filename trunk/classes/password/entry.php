@@ -69,7 +69,7 @@ class Entry
      * Descriptions are optional if there is no description stored the value is 
      * null to indicate that.
      *
-     * @var mixed
+     * @var string/null
      */
     protected $description = null;
 
@@ -83,9 +83,9 @@ class Entry
     /**
      * Password of the stored entry 
      * 
-     * @var string
+     * @var string/null
      */
-    protected $password;
+    protected $password = null;
 
     /**
      * Arbitrary amount of other fields stored as key/value pairs. 
@@ -217,5 +217,29 @@ class Entry
     public function addField( Field $field ) 
     {
         $this->fields[$field->getId()] = $field;
+    }
+
+    /**
+     * Get the password stored within this entry.
+     *
+     * Eventhough it does not make a lot of sense entries without passwords are 
+     * allowed. Therefore these method may return null in case no password has 
+     * been set for this entry. 
+     * 
+     * @return string/null
+    */
+    public function getPassword() 
+    {
+        return $this->password;
+    }
+
+    /**
+     * Set the password for this entry 
+     * 
+     * @param string $password 
+     */
+    public function setPassword( $password ) 
+    {
+        $this->password = $password;
     }
 }
