@@ -50,7 +50,7 @@ abstract class Writer
     public function __construct( Password\EntryList $passwordList ) 
     {
         $this->passwordList = $passwordList;
-        $this->intitalize();
+        $this->initialize();
     }
 
     /**
