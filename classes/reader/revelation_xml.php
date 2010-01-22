@@ -97,8 +97,13 @@ class RevelationXml extends Reader
             throw new \Exception( "The input file '{$this->filename}' could not be opened for reading." );
         } 
 
+        $errorHandling = \libxml_use_internal_errors( true );
         $this->doc = new \DOMDocument();
-        $this->doc->load( $this->filename );
+        if ( $this->doc->load( $this->filename ) === false || count( libxml_get_errors() ) !== 0 ) 
+        {
+            throw new \Exception( "The Revelation XML file seems to be invalid" );
+        }
+        \libxml_use_internal_errors( $errorHandling );
     }
 
     /**

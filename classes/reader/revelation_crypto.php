@@ -79,8 +79,13 @@ class RevelationCrypto extends RevelationXml
             $this->password 
         );
 
+        $errorHandling = \libxml_use_internal_errors( true );
         $this->doc = new \DOMDocument();
-        $this->doc->loadXML( (string)$revelationFile );
+        if ( $this->doc->loadXML( (string)$revelationFile ) === false || count( libxml_get_errors() ) !== 0 ) 
+        {
+            throw new \Exception( "The Revelation XML file seems to be invalid" );
+        }
+        \libxml_use_internal_errors( $errorHandling );
 
         // We do not need the decrypted data any longer, as it is now 
         // represented by the DOMDocument. Every piece of it in memory does 
