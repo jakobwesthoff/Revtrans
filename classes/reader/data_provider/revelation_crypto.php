@@ -28,30 +28,23 @@
  * either expressed or implied, of Jakob Westhoff
 **/
 
-namespace org\westhoffswelt\revtrans\StreamWrapper;
+namespace org\westhoffswelt\revtrans\Reader\DataProvider;
 
 use org\westhoffswelt\revtrans;
 
 /**
- * Stream wrapper to allow the reading of encrypted revelation files.
+ * Data provider to allow the reading of encrypted revelation files.
  *
- * This stream wrapper is capable of reading the encrypted Revelation password 
+ * This date provider is capable of reading the encrypted Revelation password 
  * file, if the correct passphrase is provided.
  *
- * The stream reader does not store any temporary decrypted data on the disc at 
+ * The data provider does not store any temporary decrypted data on the disc at 
  * any time. Every decrypted information is kept in memory. However it might be 
  * possible for decrypted data to be written to the hdd, for example due to 
  * swapping done by the os.
  */
 class RevelationCrypto 
 {
-    /**
-     * Context which is associated with the opened stream 
-     * 
-     * @var resource
-     */
-    public $context;
-
     /**
      * Fields of the revelation header structure 
      * 
@@ -60,11 +53,18 @@ class RevelationCrypto
     protected $header = null;
 
     /**
-     * 32 byte padded password to be used for decryption 
+     * 32 byte sized 0-byte padded password to be used for decryption 
      * 
      * @var string
      */
-    protected $password = null;
+    protected $key = null;
+
+    /**
+     * 16 byte initialization vector used for CBC encryption 
+     * 
+     * @var string
+     */
+    protected $iv = null;
 
     /**
      * Data once it has been decrypted and decompressed.
@@ -74,91 +74,88 @@ class RevelationCrypto
     protected $data = null;
 
     /**
-     * Default constructor called before stream_open is called. 
+     * File handle to the opened revelation file.
+     *
+     * As different parts of the data are read in subsequently called methods 
+     * this class-wide handle storage is needed to not always reopen and seek 
+     * the password file. 
      * 
-     * @return void
+     * @var resource
      */
-    public function __construct() 
+    protected $fh = null;
+
+    /**
+     * Default constructor taking the filepath as well as the needed password 
+     * as argument. 
+     * 
+     * @param string $filename 
+     * @param string $password 
+     */
+    public function __construct( $filename, $password ) 
     {
-        // Nothing to do on construction currenlty.
-    }
-
-    public function stream_open( $path, $mode, $options, &$opened_path ) 
-    {
-        $realpath = realpath( 
-            substr( 
-                $path,
-                strpos( $path, "://" ) + 3
-            )
-        );
-
-        // Set the realpath if requested
-        if ( $options & STREAM_USE_PATH === STREAM_USE_PATH ) 
+        // mcrypt is no default extension therefore we check for its 
+        // availability
+        if ( !extension_loaded( "mcrypt" ) ) 
         {
-            $opened_path = $realpath;
+            throw new \Exception( "The mcrypt extension is needed to open encrypted Revelation password files." );
         }
 
-        // Check if the mode is acceptable for this file. Currently
-        // read-only is supported
-        if ( $mode !== "r" ) 
-        {
-            if ( $options & STREAM_REPORT_ERRORS === STREAM_REPORT_ERRORS ) 
-            {
-                trigger_error( "Revealtion streams may only be opened for reading", E_USER_ERROR );
-            }
-            return false;
-        }
+        $realpath = realpath( $filename );
 
-        // We need a password set in the context options
-        if ( $this->context === null
-          || !( $contextOptions = stream_context_get_options( $this->context ) )
-          || !isset( $contextOptions["revelation"] ) || !isset( $contextOptions["revelation"]["password"] ) ) 
-        {
-            if ( $options & STREAM_REPORT_ERRORS === STREAM_REPORT_ERRORS ) 
-            {
-                trigger_error( "The context option containing the password has not been supplied", E_USER_ERROR );
-            }
-            return false;
-        }
-        else 
-        {
-            // This is a really unsecure and evil way of using the password but Revelation
-            // unfortunately works this way :(
-            $this->password = str_pad( $contextOptions["revelation"]["password"], 32, "\0" );
-        }
+        // This is a really unsecure and evil way of using the password but Revelation
+        // unfortunately works this way :(
+        $this->key = str_pad( $password, 32, "\0" );
 
         if ( !file_exists( $realpath ) || !is_readable( $realpath )
-          || ( $fh = fopen( $realpath, "r" ) ) === null ) 
+            || ( $this->fh = fopen( $realpath, "r" ) ) === null ) 
         {
-            if ( $options & STREAM_REPORT_ERRORS === STREAM_REPORT_ERRORS ) 
+            throw new \Exception( "The revelation file could not be opened for reading" );
+        }
+
+        $this->header = $this->readHeader();
+        $this->iv = $this->decryptIV();
+    }
+
+    /**
+     * Destruct the object and free all bind resources. 
+     */
+    public function __destruct() 
+    {
+        fclose( $this->fh );
+    }
+
+    /**
+     * Return the decrypted and uncompressed revelation xml data if a 
+     * conversion to string is requested. 
+     *
+     * Decryption as well as decompressing is done in a lazy way. Therefore the 
+     * data will be decrypted and decompressed the first time this method is 
+     * called.
+     * 
+     * @return string
+     */
+    public function __toString() 
+    {
+        if ( $this->data === null ) 
+        {
+            $decrypted = $this->decryptData();
+
+            // If the data stream is malformed, which happens if a wrong 
+            // decryption key is given, than gzuncompress will issue a warning, 
+            // which can not be suppressed otherwise. The validity of the gz 
+            // stream can't be checked easily, as well. Therefore the error is 
+            // silenced.
+            $decompressed = @\gzuncompress( $decrypted );
+
+            if ( $decompressed === false ) 
             {
-                trigger_error( "The revelation file could not be opened for reading", E_USER_ERROR );
+                throw new \Exception( "The Revelation file could not be decrypted/decompressed correctly. Wrong password?" );
             }
-            return false;
+
+            $this->data = $decompressed;
         }
 
-        try 
-        {
-            $this->header = $this->readHeader( $fh );
-            $iv = $this->decryptIV( $fh );
-            $this->data = \gzuncompress( 
-                $this->removePadding( 
-                    $this->decryptData( $fh, $iv )
-                )
-            );
-        }
-        catch ( \Exception $e )
-        {
-            if ( $options & STREAM_REPORT_ERRORS === STREAM_REPORT_ERRORS ) 
-            {
-                trigger_error( $e->getMessage(), E_USER_ERROR );
-            }
-            return false;
-        }
-
-        fclose( $fh );
-
-        return true;
+        return $this->data;
     }
 
     /**
@@ -190,14 +187,13 @@ class RevelationCrypto
      *   3 byte          # application version
      *   0x00 0x00 0x00  # separator
      * 
-     * @param resource $fh 
      * @return array
      */
-    protected function readHeader( $fh ) 
+    protected function readHeader() 
     {
         $header = array();
         
-        $magic = fread( $fh, 4 );
+        $magic = fread( $this->fh, 4 );
 
         if ( $magic != chr( 114 ) . chr( 118 ) . chr( 108 ) . chr( 0 ) ) 
         {
@@ -206,20 +202,20 @@ class RevelationCrypto
 
         $header["magic"] = $magic;
 
-        $header["dataversion"] = ord( fread( $fh, 1 ) );
+        $header["dataversion"] = ord( fread( $this->fh, 1 ) );
 
-        fread( $fh, 1 );
+        fread( $this->fh, 1 );
 
-        $header["appversion"] = (string)ord( fread( $fh, 1 ) ) . "."
-                              . (string)ord( fread( $fh, 1 ) ) . "."
-                              . (string)ord( fread( $fh, 1 ) );
+        $header["appversion"] = (string)ord( fread( $this->fh, 1 ) ) . "."
+                              . (string)ord( fread( $this->fh, 1 ) ) . "."
+                              . (string)ord( fread( $this->fh, 1 ) );
 
         if ( $header["dataversion"] !== 1 ) 
         {
             throw new \Exception( "Incompatible Revelation file version." );
         }
 
-        fread( $fh, 3 );
+        fread( $this->fh, 3 );
 
         return $header;
     }
@@ -234,15 +230,14 @@ class RevelationCrypto
      * The IV is encrypted directly after the header using the password and the 
      * "Electronic Codebook" block cipher.
      * 
-     * @param resource $fh 
      * @return string
      */
-    protected function decryptIV( $fh ) 
+    protected function decryptIV() 
     {
         return mcrypt_decrypt( 
             MCRYPT_RIJNDAEL_128,
             $this->password,
-            fread( $fh, 16 ),
+            fread( $this->fh, 16 ),
             MCRYPT_MODE_ECB
         );
     }
@@ -253,20 +248,18 @@ class RevelationCrypto
      * The file pointer has to be set on the first encrypted byte. After the 
      * operation it will be pointing to EOF.
      * 
-     * @param mixed $fh 
-     * @param mixed $iv 
      * @return string
      */
-    protected function decryptData( $fh, $iv ) 
+    protected function decryptData() 
     {
         $decrypted = "";
 
         $ed = mcrypt_module_open( MCRYPT_RIJNDAEL_128, '', MCRYPT_MODE_CBC, '' );
-        mcrypt_generic_init( $ed, $this->password, $iv );
+        mcrypt_generic_init( $ed, $this->password, $this->iv );
 
-        while( !feof( $fh ) && ( $block = fread( $fh, 16 ) ) !== "" ) 
+        while( !feof( $this->fh ) && ( $block = fread( $this->fh, 16 ) ) !== "" ) 
         {            
-            var_dump( ftell( $fh ) );
+            var_dump( ftell( $this->fh ) );
             $decrypted .= mdecrypt_generic( 
                 $ed, 
                 $block
