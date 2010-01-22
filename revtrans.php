@@ -47,11 +47,12 @@ echo "\n";
 
 
 $options = getopt( 
-    "",
+    "h",
     array(
         "input-format:",
         "password:",
         "output:",
+        "help"
     )
 );
 
@@ -64,8 +65,9 @@ if ( $options === false )
 // Remove the options from the argv array
 array_splice( $argv, 1, count( $options ) );
 
+var_dump( $options );
 
-if ( $argc < 2 ) 
+if ( $argc < 2 || isset( $options["h"] ) || isset( $options["help"] ) ) 
 {
     $basename = basename( $argv[0] );
     echo <<<USAGE
