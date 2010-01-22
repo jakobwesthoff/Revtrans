@@ -102,10 +102,6 @@ class RevelationCrypto
 
         $realpath = realpath( $filename );
 
-        // This is a really unsecure and evil way of using the password but Revelation
-        // unfortunately works this way :(
-        $this->key = str_pad( $password, 32, "\0" );
-
         if ( !file_exists( $realpath ) || !is_readable( $realpath )
             || ( $this->fh = fopen( $realpath, "r" ) ) === null ) 
         {
@@ -113,6 +109,31 @@ class RevelationCrypto
         }
 
         $this->header = $this->readHeader();
+
+        // Version 1 of the fileformat differs from Version two in the used key 
+        // as well a stored salt. Therefore we need to check this here.
+        // Version 2 files are currently only produced by an inofficial fork of 
+        // myself, which uses salted multihashing to provide a safer way of 
+        // encryption.
+        // It can be found on bitbucket:
+        // See http://bitbucket.org/jakobwesthoff/revelation/
+        switch( $this->header["dataversion"] ) 
+        {
+            case 1:
+                // This is a really unsecure and evil way of using the password 
+                // but Revelation fileversion 1 unfortunately works this way :(
+                $this->key = str_pad( $password, 32, "\0" );
+            break;
+            case 2:
+                $key = hash( "sha256", $password . $this->readSalt(), true );
+                for( $i=0; $i<10000; ++$i ) 
+                {
+                    $key = hash( "sha256", $key, true );
+                }
+                $this->key = $key;
+            break;
+        }
+
         $this->iv = $this->decryptIV();
     }
 
@@ -209,7 +230,7 @@ class RevelationCrypto
                               . (string)ord( fread( $this->fh, 1 ) ) . "."
                               . (string)ord( fread( $this->fh, 1 ) );
 
-        if ( $header["dataversion"] !== 1 ) 
+        if ( $header["dataversion"] !== 1 && $header["dataversion"] !== 2 ) 
         {
             throw new \Exception( "Incompatible Revelation file version." );
         }
@@ -239,6 +260,22 @@ class RevelationCrypto
             fread( $this->fh, 16 ),
             MCRYPT_MODE_ECB
         );
+    }
+
+    /**
+     * Read the salt for key hashing
+     *
+     * This method is only used for version2 files of Revelation. 
+     *
+     * The file pointer is supposed to be set to the first byte of the salt.  
+     * After the method finished the pointer will be positioned on the first 
+     * byte after the salt. 
+     * 
+     * @return string
+     */
+    protected function readSalt() 
+    {
+        return fread( $this->fh, 32 );
     }
 
     /**
