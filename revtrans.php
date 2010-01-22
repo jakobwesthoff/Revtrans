@@ -61,6 +61,10 @@ if ( $options === false )
     exit( 2 );
 }
 
+// Remove the options from the argv array
+array_splice( $argv, 1, count( $options ) );
+
+
 if ( $argc < 2 ) 
 {
     $basename = basename( $argv[0] );
