@@ -236,7 +236,7 @@ class RevelationCrypto
     {
         return mcrypt_decrypt( 
             MCRYPT_RIJNDAEL_128,
-            $this->password,
+            $this->key,
             fread( $this->fh, 16 ),
             MCRYPT_MODE_ECB
         );
@@ -255,7 +255,7 @@ class RevelationCrypto
         $decrypted = "";
 
         $ed = mcrypt_module_open( MCRYPT_RIJNDAEL_128, '', MCRYPT_MODE_CBC, '' );
-        mcrypt_generic_init( $ed, $this->password, $this->iv );
+        mcrypt_generic_init( $ed, $this->key, $this->iv );
 
         while( !feof( $this->fh ) && ( $block = fread( $this->fh, 16 ) ) !== "" ) 
         {            
