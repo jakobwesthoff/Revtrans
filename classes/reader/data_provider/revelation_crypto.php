@@ -125,8 +125,7 @@ class RevelationCrypto
     }
 
     /**
-     * Return the decrypted and uncompressed revelation xml data if a 
-     * conversion to string is requested. 
+     * Return the decrypted and uncompressed revelation xml data
      *
      * Decryption as well as decompressing is done in a lazy way. Therefore the 
      * data will be decrypted and decompressed the first time this method is 
@@ -134,7 +133,7 @@ class RevelationCrypto
      * 
      * @return string
      */
-    public function __toString() 
+    public function getData() 
     {
         if ( $this->data === null ) 
         {

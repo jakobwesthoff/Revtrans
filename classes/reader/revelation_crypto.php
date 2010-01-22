@@ -81,7 +81,7 @@ class RevelationCrypto extends RevelationXml
 
         $errorHandling = \libxml_use_internal_errors( true );
         $this->doc = new \DOMDocument();
-        if ( $this->doc->loadXML( (string)$revelationFile ) === false || count( libxml_get_errors() ) !== 0 ) 
+        if ( $this->doc->loadXML( $revelationFile->getData() ) === false || count( libxml_get_errors() ) !== 0 ) 
         {
             throw new \Exception( "The Revelation XML file seems to be invalid" );
         }
