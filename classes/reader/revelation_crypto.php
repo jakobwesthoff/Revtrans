@@ -46,5 +46,45 @@ use org\westhoffswelt\revtrans\Reader;
  */
 class RevelationCrypto extends RevelationXml 
 {
+    /**
+     * Password used to decrypt the file 
+     * 
+     * @var string
+     */
+    protected $password;
 
+    /**
+     * Construct the reader taking the filename and the required decryption 
+     * password as arguments.
+     * 
+     * @param string $filename 
+     * @param string $password 
+     */
+    public function __construct( $filename, $password ) 
+    {
+        $this->filename = $filename;
+        $this->password = $password;
+
+        $this->initialize();
+    }
+
+    /**
+     * Initialize the reader by decrypting the password file in memory and 
+     * loading its decompressed content into a DOMDocument. 
+     */
+    protected function initialize() 
+    {
+        $revelationFile = new DataProvider\RevelationCrypto( 
+            $this->filename, 
+            $this->password 
+        );
+
+        $this->doc = new \DOMDocument();
+        $this->doc->loadXML( (string)$revelationFile );
+
+        // We do not need the decrypted data any longer, as it is now 
+        // represented by the DOMDocument. Every piece of it in memory does 
+        // provides the risk of it being written to swap.
+        unset( $revelationFile );
+    }
 }
