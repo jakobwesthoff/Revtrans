@@ -259,7 +259,6 @@ class RevelationCrypto
 
         while( !feof( $this->fh ) && ( $block = fread( $this->fh, 16 ) ) !== "" ) 
         {            
-            var_dump( ftell( $this->fh ) );
             $decrypted .= mdecrypt_generic( 
                 $ed, 
                 $block
