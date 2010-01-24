@@ -37,6 +37,8 @@ include( "classes/password/entry_list.php" );
 include( "classes/reader/revelation_xml.php" );
 include( "classes/crypto_layer.php" );
 include( "classes/crypto_layer/revelation.php" );
+include( "classes/crypto_layer/revelation/version_one.php" );
+include( "classes/crypto_layer/revelation/version_two.php" );
 include( "classes/reader/revelation_crypto.php" );
 include( "classes/writer.php" );
 include( "classes/writer/secrets_csv/entry.php" );

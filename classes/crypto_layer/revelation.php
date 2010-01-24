@@ -34,17 +34,20 @@ use org\westhoffswelt\revtrans\CryptoLayer;
 use org\westhoffswelt\revtrans;
 
 /**
- * Crypto Layer o allow the reading of encrypted revelation files.
+ * Crypto Layer to allow the reading of encrypted revelation files.
  *
  * This crypto layer is capable of reading the encrypted Revelation password 
  * file, if the correct passphrase is provided.
+ *
+ * It is an abstract base interface for implementations of version 1 and 2 of 
+ * the revelation file structure, providing a auto-detecting factory.
  *
  * The crypto layer does not store any temporary decrypted data on the disc at
  * any time. Every decrypted information is kept in memory. However it might be 
  * possible for decrypted data to be written to the hdd, for example due to 
  * swapping done by the os.
  */
-class Revelation extends CryptoLayer
+abstract class Revelation extends CryptoLayer
 {
     /**
      * Fields of the revelation header structure 
@@ -54,7 +57,7 @@ class Revelation extends CryptoLayer
     protected $header = null;
 
     /**
-     * 32 byte sized 0-byte padded password to be used for decryption 
+     * 32 byte key to be used for decryption 
      * 
      * @var string
      */
@@ -105,6 +108,12 @@ class Revelation extends CryptoLayer
 
         $realpath = realpath( $filename );
 
+        // Make sure the implementation is compatible
+        if( !static::isApplicable( $filename ) ) 
+        {
+            throw new Exception( "The given file does not seem to be a valid Revelation file, or it is of an unknown version." );
+        }
+
         if ( !file_exists( $realpath ) || !is_readable( $realpath )
             || ( $this->fh = fopen( $realpath, "r" ) ) === null ) 
         {
@@ -113,29 +122,7 @@ class Revelation extends CryptoLayer
 
         $this->header = $this->readHeader();
 
-        // Version 1 of the fileformat differs from Version two in the used key 
-        // as well a stored salt. Therefore we need to check this here.
-        // Version 2 files are currently only produced by an inofficial fork of 
-        // myself, which uses salted multihashing to provide a safer way of 
-        // encryption.
-        // It can be found on bitbucket:
-        // See http://bitbucket.org/jakobwesthoff/revelation/
-        switch( $this->header["dataversion"] ) 
-        {
-            case 1:
-                // This is a really unsecure and evil way of using the password 
-                // but Revelation fileversion 1 unfortunately works this way :(
-                $this->key = str_pad( $password, 32, "\0" );
-            break;
-            case 2:
-                $key = hash( "sha256", $password . $this->readSalt(), true );
-                for( $i=0; $i<10000; ++$i ) 
-                {
-                    $key = hash( "sha256", $key, true );
-                }
-                $this->key = $key;
-            break;
-        }
+        $this->key = $this->prepareKey( $password );
 
         $this->iv = $this->decryptIV();
     }
@@ -266,22 +253,6 @@ class Revelation extends CryptoLayer
     }
 
     /**
-     * Read the salt for key hashing
-     *
-     * This method is only used for version2 files of Revelation. 
-     *
-     ^* The file pointer is supposed to be set to the first byte of the salt.  
-     * After the method finished the pointer will be positioned on the first 
-     * byte after the salt. 
-     * 
-     * @return string
-     */
-    protected function readSalt() 
-    {
-        return fread( $this->fh, 32 );
-    }
-
-    /**
      * Decrypt the gzipped XML Data using the stored password and given IV
      *
      * The file pointer has to be set on the first encrypted byte. After the 
@@ -323,5 +294,39 @@ class Revelation extends CryptoLayer
     {
         $padding = ord( $paddingCharacter = substr( $data, -1 ) );
         return substr( $data, 0, $padding * -1 );
+    }
+
+    /**
+     * Prepare the decryption key. If extra work for this like hashing or 
+     * reading a salt is needed for this, it is assumed to be done here. 
+     *
+     * The outputted key has to be the one used directly for the decryption 
+     * sequence.
+     * 
+     * @param string $password 
+     * @return string
+     */
+    abstract protected function prepareKey( $password );
+
+    /**
+     * Factory method to autodetect the version of a revelation file and return 
+     * the correct crypto layer. 
+     * 
+     * @param string $filename 
+     * @param string $password 
+     * @return Revelation
+     */
+    public static function autodetect( $filename, $password ) 
+    {
+        foreach( array( "VersionOne", "VersionTwo" ) as $implementation ) 
+        {
+            $layer = "\\org\\westhoffswelt\\revtrans\\CryptoLayer\\Revelation\\$implementation";
+            if ( $layer::isApplicable( $filename ) ) 
+            {
+                return new $layer( $filename, $password );
+            }
+        }
+
+        throw new Exception( "No Revelation file handler could be autodetected for file '$filename'" );
     }
 }

@@ -74,7 +74,7 @@ class RevelationCrypto extends RevelationXml
      */
     protected function initialize() 
     {
-        $revelationFile = new revtrans\CryptoLayer\Revelation( 
+        $revelationFile = revtrans\CryptoLayer\Revelation::autodetect( 
             $this->filename, 
             $this->password 
         );
