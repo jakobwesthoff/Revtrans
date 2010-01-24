@@ -28,34 +28,38 @@
  * either expressed or implied, of Jakob Westhoff
 **/
 
-namespace org\westhoffswelt\revtrans\Reader;
-
-use org\westhoffswelt\revtrans;
-use org\westhoffswelt\revtrans\Reader;
+namespace org\westhoffswelt\revtrans;
 
 /**
- * Reader for the encrypted XML produced by Revelation.
+ * Crypto Layers provide a simple way read certain 
+ * encrypted data structures stored in the filesystem.
  *
- * This reader is capable of reading the encrypted Revelation password file, if 
- * the correct passphrase is provided.
+ * Revelation password files for example are only encrypted and compressed XML 
+ * files which are prepended with a special header. 
  *
- * The reader does not store any temporary decrypted data on the disc at any 
- * time. Every decrypted information is kept in memory. However it might be 
- * possible for decrypted data to be written to the hdd, for example due to 
- * swapping done by the os.
+ * The CryptoLayer provides a generic interface for such files to be opened 
+ * and decrypted without the underlying reader having to care about the 
+ * encryption. 
  */
-class RevelationCrypto extends RevelationXml 
+abstract class CryptoLayer 
 {
     /**
-     * Password used to decrypt the file 
+     * File to decrypt 
+     * 
+     * @var string
+     */
+    protected $filename;
+
+    /**
+     * The password provided for decryption 
      * 
      * @var string
      */
     protected $password;
 
     /**
-     * Construct the reader taking the filename and the required decryption 
-     * password as arguments.
+     * Construct an EncryptionLayer taking the filename to be read as well as 
+     * the password needed as argument. 
      * 
      * @param string $filename 
      * @param string $password 
@@ -64,32 +68,35 @@ class RevelationCrypto extends RevelationXml
     {
         $this->filename = $filename;
         $this->password = $password;
-
-        $this->initialize();
     }
 
     /**
-     * Initialize the reader by decrypting the password file in memory and 
-     * loading its decompressed content into a DOMDocument. 
+     * Decrypt the data file and return the decrypted data 
+     * 
+     * @return string
      */
-    protected function initialize() 
+    abstract public function decrypt();
+
+    /**
+     * Check if the given file can be decrypted by this crypto layer.
+     *
+     * Because it is sometimes hard to tell if a given file does have a certain 
+     * format, the contract for this function is eased a little bit.
+     *
+     * It may return true even if it is not sure it can really read the file. 
+     * If it returns false on the other hand this is intepreted as a guarantee, 
+     * that the layer can not interpret the file correctly.
+     *
+     * Even though these rules apply. The detection should be done as precise 
+     * as possible, as it might be used for file auto-detection attempts.
+     * 
+     * @param string $filename 
+     * @return bool
+     */
+    public static function isApplicable( $filename ) 
     {
-        $revelationFile = new revtrans\CryptoLayer\Revelation( 
-            $this->filename, 
-            $this->password 
-        );
-
-        $errorHandling = \libxml_use_internal_errors( true );
-        $this->doc = new \DOMDocument();
-        if ( $this->doc->loadXML( $revelationFile->decrypt() ) === false || count( libxml_get_errors() ) !== 0 ) 
-        {
-            throw new \Exception( "The Revelation XML file seems to be invalid" );
-        }
-        \libxml_use_internal_errors( $errorHandling );
-
-        // We do not need the decrypted data any longer, as it is now 
-        // represented by the DOMDocument. Every piece of it in memory does 
-        // provides the risk of it being written to swap.
-        unset( $revelationFile );
+        // Unfortunately abstract static methods are not allowed. Therefore 
+        // this technique is used.
+        throw new Exception( "isApplicable function not implemented. This function needs to be overwritten in the implementing class." );
     }
 }

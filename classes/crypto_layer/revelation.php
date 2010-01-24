@@ -28,22 +28,23 @@
  * either expressed or implied, of Jakob Westhoff
 **/
 
-namespace org\westhoffswelt\revtrans\Reader\DataProvider;
+namespace org\westhoffswelt\revtrans\CryptoLayer;
 
+use org\westhoffswelt\revtrans\CryptoLayer;
 use org\westhoffswelt\revtrans;
 
 /**
- * Data provider to allow the reading of encrypted revelation files.
+ * Crypto Layer o allow the reading of encrypted revelation files.
  *
- * This date provider is capable of reading the encrypted Revelation password 
+ * This crypto layer is capable of reading the encrypted Revelation password 
  * file, if the correct passphrase is provided.
  *
- * The data provider does not store any temporary decrypted data on the disc at 
+ * The crypto layer does not store any temporary decrypted data on the disc at
  * any time. Every decrypted information is kept in memory. However it might be 
  * possible for decrypted data to be written to the hdd, for example due to 
  * swapping done by the os.
  */
-class RevelationCrypto 
+class Revelation extends CryptoLayer
 {
     /**
      * Fields of the revelation header structure 
@@ -93,6 +94,8 @@ class RevelationCrypto
      */
     public function __construct( $filename, $password ) 
     {
+        parent::__construct( $filename, $password );
+
         // mcrypt is no default extension therefore we check for its 
         // availability
         if ( !extension_loaded( "mcrypt" ) ) 
@@ -154,7 +157,7 @@ class RevelationCrypto
      * 
      * @return string
      */
-    public function getData() 
+    public function decrypt() 
     {
         if ( $this->data === null ) 
         {
@@ -267,7 +270,7 @@ class RevelationCrypto
      *
      * This method is only used for version2 files of Revelation. 
      *
-     * The file pointer is supposed to be set to the first byte of the salt.  
+     ^* The file pointer is supposed to be set to the first byte of the salt.  
      * After the method finished the pointer will be positioned on the first 
      * byte after the salt. 
      * 
