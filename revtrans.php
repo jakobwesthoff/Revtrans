@@ -81,7 +81,7 @@ Options:
   --password=<password>             Password to use for decryption. It is 
                                     discouraged to supply a password on the 
                                     commandline. You will be asked for one if
-                                    neccessary.
+                                    necessary.
   --output=<file>                   Write output to a file instead of stdout.
 
 USAGE;
