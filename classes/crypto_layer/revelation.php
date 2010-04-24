@@ -150,6 +150,10 @@ abstract class Revelation extends CryptoLayer
         {
             $decrypted = $this->decryptData();
 
+            if ( !function_exists( 'gzuncompress' ) ) {
+                throw new \Exception( "Seems the gzip support of you PHP is not enabled. It needs to be enabled to proceed." );
+            }
+
             // If the data stream is malformed, which happens if a wrong 
             // decryption key is given, than gzuncompress will issue a warning, 
             // which can not be suppressed otherwise. The validity of the gz 
